@@ -39,7 +39,7 @@ dependencies:
   file_picker: ^8.0.7
 
   # Local Notifications (zero internet)
-  flutter_local_notifications: ^17.2.2
+
 
   # Recurrence
   rrule: ^0.2.6
