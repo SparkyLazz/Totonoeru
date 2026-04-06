@@ -109,7 +109,6 @@ class _FilterChipRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final categoriesAsync = ref.watch(allCategoriesProvider);
     final activeFilter = ref.watch(activeCategoryFilterProvider);
     final accent = Theme.of(context).extension<AppAccentColors>()!;
@@ -217,7 +216,7 @@ class _TaskListBody extends StatelessWidget {
     final done = grouped[TaskStatus.done] ?? [];
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(AppSpacing.screenH, 8, AppSpacing.screenH, 120),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.screenH, 8, AppSpacing.screenH, 120),
       children: [
         if (inProgress.isNotEmpty) ...[
           _StatusDivider(label: 'In Progress', count: inProgress.length),
@@ -319,7 +318,7 @@ class _SwipeableTaskCard extends ConsumerWidget {
           HapticFeedback.mediumImpact();
           final repo = ref.read(taskRepositoryProvider);
           if (task.status == TaskStatus.done) {
-            await repo.uncompleteTask(task.uuid);
+            await repo.uncompletedTask(task.uuid);
           } else {
             await repo.completeTask(task.uuid);
           }
@@ -413,7 +412,7 @@ class _TaskCard extends ConsumerWidget {
                           HapticFeedback.mediumImpact();
                           final repo = ref.read(taskRepositoryProvider);
                           if (isDone) {
-                            await repo.uncompleteTask(task.uuid);
+                            await repo.uncompletedTask(task.uuid);
                           } else {
                             await repo.completeTask(task.uuid);
                           }

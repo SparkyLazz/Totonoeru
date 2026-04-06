@@ -36,7 +36,7 @@ class TaskDetailScreen extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => Scaffold(
+      error: (e, _) => const Scaffold(
         body: Center(child: Text('Error loading task')),
       ),
       data: (task) {
@@ -116,7 +116,7 @@ class TaskDetailScreen extends ConsumerWidget {
                               HapticFeedback.mediumImpact();
                               final repo = ref.read(taskRepositoryProvider);
                               if (isDone) {
-                                await repo.uncompleteTask(task.uuid);
+                                await repo.uncompletedTask(task.uuid);
                               } else {
                                 await repo.completeTask(task.uuid);
                               }
@@ -214,7 +214,7 @@ class TaskDetailScreen extends ConsumerWidget {
                         HapticFeedback.mediumImpact();
                         final repo = ref.read(taskRepositoryProvider);
                         if (isDone) {
-                          await repo.uncompleteTask(task.uuid);
+                          await repo.uncompletedTask(task.uuid);
                         } else {
                           await repo.completeTask(task.uuid);
                         }
@@ -276,7 +276,7 @@ class TaskDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Delete',
+            child: const Text('Delete',
                 style: TextStyle(color: AppColors.priorityHigh)),
           ),
         ],
@@ -722,7 +722,7 @@ class _SubtaskItem extends ConsumerWidget {
                 HapticFeedback.mediumImpact();
                 final repo = ref.read(taskRepositoryProvider);
                 if (isDone) {
-                  await repo.uncompleteTask(subtask.uuid);
+                  await repo.uncompletedTask(subtask.uuid);
                 } else {
                   await repo.completeTask(subtask.uuid);
                 }

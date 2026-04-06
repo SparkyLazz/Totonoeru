@@ -119,7 +119,7 @@ class TaskRepository {
   Future<void> completeTask(String uuid) =>
       setStatus(uuid, TaskStatus.done);
 
-  Future<void> uncompleteTask(String uuid) =>
+  Future<void> uncompletedTask(String uuid) =>
       setStatus(uuid, TaskStatus.pending);
 
   // ── DELETE ────────────────────────────────────────────────────────────────

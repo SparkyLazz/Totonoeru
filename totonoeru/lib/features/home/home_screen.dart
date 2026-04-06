@@ -96,7 +96,6 @@ class _WelcomeCard extends StatelessWidget {
     final cardBg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
     final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
     final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
