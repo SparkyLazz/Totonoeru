@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/theme/app_accent_colors.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../shared/widgets/app_fab.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HOME SCREEN
-// Week 1: scaffold + welcome card shell.
-// Full implementation: Week 4 (greeting, streak, upcoming blocks, stats row).
-// ─────────────────────────────────────────────────────────────────────────────
+import '../tasks/add_task_sheet.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -19,83 +15,53 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final accent = Theme.of(context).extension<AppAccentColors>()!;
-    final textPrimary = Theme.of(context).colorScheme.onSurface;
-    final textSecondary = Theme.of(context).colorScheme.outline;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning'
-        : hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
+    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     final greetingJP = hour < 12 ? '今朝' : hour < 17 ? '午後' : '夜';
 
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ── Header ─────────────────────────────────────────────────────
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenH,
-                AppSpacing.screenTop,
-                AppSpacing.screenH,
-                0,
+                AppSpacing.screenH, AppSpacing.screenTop, AppSpacing.screenH, 0,
               ),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      greetingJP,
-                      style: AppTextStyles.jpSubtitle.copyWith(
-                        color: textSecondary,
-                      ),
-                    ),
+                    Text(greetingJP,
+                        style: AppTextStyles.jpSubtitle.copyWith(color: textSecondary)),
                     const SizedBox(height: 4),
                     Text(
                       settings.userName.isNotEmpty
                           ? '$greeting, ${settings.userName}.'
                           : '$greeting.',
-                      style: AppTextStyles.headingL.copyWith(
-                        color: textPrimary,
-                      ),
+                      style: AppTextStyles.headingL.copyWith(color: textPrimary),
                     ),
                     const SizedBox(height: AppSpacing.xl2),
 
-                    // ── Welcome card (Decision 11) ──────────────────────────
                     if (!settings.welcomeCardDismissed)
                       _WelcomeCard(
                         accentColor: accent.accent,
                         accentBg: accent.accentBg,
                         onDismiss: () =>
                             ref.read(settingsProvider.notifier).dismissWelcomeCard(),
-                        onAddTask: () {
-                          // TODO Week 2: open AddTaskSheet
-                        },
+                        onAddTask: () => showAddTaskSheet(context),
                       ),
 
                     const SizedBox(height: AppSpacing.xl),
-
-                    // ── Placeholder content ─────────────────────────────────
-                    _PlaceholderSection(
-                      label: 'Today\'s summary',
-                      sublabel: '今日の概要',
-                      accentColor: accent.accent,
-                    ),
+                    _PlaceholderSection(label: 'Today\'s summary', sublabel: '今日の概要'),
                     const SizedBox(height: AppSpacing.lg),
-                    _PlaceholderSection(
-                      label: 'Upcoming time blocks',
-                      sublabel: '次の予定',
-                      accentColor: accent.accent,
-                    ),
+                    _PlaceholderSection(label: 'Upcoming time blocks', sublabel: '次の予定'),
                     const SizedBox(height: AppSpacing.lg),
-                    _PlaceholderSection(
-                      label: 'Focus timer',
-                      sublabel: '集中タイマー',
-                      accentColor: accent.accent,
-                    ),
-                    const SizedBox(height: 100), // FAB clearance
+                    _PlaceholderSection(label: 'Focus timer', sublabel: '集中タイマー'),
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
@@ -104,18 +70,12 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: AppFab(
-        onAddTask: () {
-          // TODO Week 2: open AddTaskSheet in task mode
-        },
-        onAddTimeBlock: () {
-          // TODO Week 3: open AddTaskSheet in time block mode
-        },
+        onAddTask: () => showAddTaskSheet(context),
+        onAddTimeBlock: () {},
       ),
     );
   }
 }
-
-// ── WELCOME CARD (Decision 11) ───────────────────────────────────────────────
 
 class _WelcomeCard extends StatelessWidget {
   const _WelcomeCard({
@@ -132,17 +92,18 @@ class _WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    final border = Theme.of(context).colorScheme.outline;
-    final textPrimary = Theme.of(context).colorScheme.onSurface;
-    final textSecondary = Theme.of(context).colorScheme.outline;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: surface,
+        color: cardBg,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: accentColor.withOpacity(0.3)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,10 +111,8 @@ class _WelcomeCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  '整える is ready.',
-                  style: AppTextStyles.bodyL.copyWith(color: textPrimary),
-                ),
+                child: Text('整える is ready.',
+                    style: AppTextStyles.bodyL.copyWith(color: textPrimary)),
               ),
               GestureDetector(
                 onTap: onDismiss,
@@ -162,23 +121,19 @@ class _WelcomeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Everything is free, offline, and yours.',
-            style: AppTextStyles.bodyM.copyWith(color: textSecondary),
-          ),
+          Text('Everything is free, offline, and yours.',
+              style: AppTextStyles.bodyM.copyWith(color: textSecondary)),
           const SizedBox(height: AppSpacing.md),
           GestureDetector(
             onTap: onAddTask,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Add your first task',
-                  style: AppTextStyles.bodyM.copyWith(
-                    color: accentColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text('Add your first task',
+                    style: AppTextStyles.bodyM.copyWith(
+                      color: accentColor,
+                      fontWeight: FontWeight.w600,
+                    )),
                 const SizedBox(width: 4),
                 Icon(Icons.arrow_forward_rounded, size: 16, color: accentColor),
               ],
@@ -190,44 +145,35 @@ class _WelcomeCard extends StatelessWidget {
   }
 }
 
-// ── PLACEHOLDER SECTION ──────────────────────────────────────────────────────
-
 class _PlaceholderSection extends StatelessWidget {
   const _PlaceholderSection({
     required this.label,
     required this.sublabel,
-    required this.accentColor,
   });
 
   final String label;
   final String sublabel;
-  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    final border = Theme.of(context).colorScheme.outline;
-    final textSecondary = Theme.of(context).colorScheme.outline;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Container(
       height: 80,
       decoration: BoxDecoration(
-        color: surface,
+        color: cardBg,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
+        border: Border.all(color: borderColor),
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: AppTextStyles.bodyM.copyWith(color: textSecondary),
-            ),
-            Text(
-              sublabel,
-              style: AppTextStyles.jpXS.copyWith(color: textSecondary),
-            ),
+            Text(label, style: AppTextStyles.bodyM.copyWith(color: textSecondary)),
+            Text(sublabel, style: AppTextStyles.jpXS.copyWith(color: textSecondary)),
           ],
         ),
       ),

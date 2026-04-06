@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_accent_colors.dart';
 import '../../core/constants/app_spacing.dart';
 
@@ -8,8 +9,9 @@ class FocusScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = Theme.of(context).colorScheme.onSurface;
-    final textSecondary = Theme.of(context).colorScheme.outline;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
     final accent = Theme.of(context).extension<AppAccentColors>()!;
 
     return Scaffold(
@@ -20,9 +22,11 @@ class FocusScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.screenTop),
-              Text('集中', style: AppTextStyles.jpSubtitle.copyWith(color: textSecondary)),
+              Text('集中',
+                  style: AppTextStyles.jpSubtitle.copyWith(color: textSecondary)),
               const SizedBox(height: 4),
-              Text('Focus', style: AppTextStyles.headingL.copyWith(color: textPrimary)),
+              Text('Focus',
+                  style: AppTextStyles.headingL.copyWith(color: textPrimary)),
               Expanded(
                 child: Center(
                   child: Column(

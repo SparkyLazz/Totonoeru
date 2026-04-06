@@ -7,22 +7,18 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/providers/settings_provider.dart';
 import '../stats/stats_screen.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SETTINGS SCREEN — Week 1 shell
-// Full implementation: Week 6 (backup, export, category management)
-// ─────────────────────────────────────────────────────────────────────────────
-
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = ref.watch(settingsProvider);
     final accent = Theme.of(context).extension<AppAccentColors>()!;
-    final textPrimary = Theme.of(context).colorScheme.onSurface;
-    final textSecondary = Theme.of(context).colorScheme.outline;
-    final surface = Theme.of(context).colorScheme.surface;
-    final border = Theme.of(context).colorScheme.outline;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Scaffold(
       body: SafeArea(
@@ -35,9 +31,8 @@ class SettingsScreen extends ConsumerWidget {
             Text('Settings', style: AppTextStyles.headingL.copyWith(color: textPrimary)),
             const SizedBox(height: AppSpacing.xl2),
 
-            // ── Profile ────────────────────────────────────────────────────
-            _SectionLabel(label: 'Profile'),
-            _SettingsCard(children: [
+            _SectionLabel(label: 'Profile', textSecondary: textSecondary),
+            _SettingsCard(cardBg: cardBg, borderColor: borderColor, children: [
               _InfoRow(
                 label: 'Name',
                 value: settings.userName.isNotEmpty ? settings.userName : 'Not set',
@@ -47,10 +42,8 @@ class SettingsScreen extends ConsumerWidget {
             ]),
             const SizedBox(height: AppSpacing.xl),
 
-            // ── Appearance ─────────────────────────────────────────────────
-            _SectionLabel(label: 'Appearance'),
-            _SettingsCard(children: [
-              // Theme
+            _SectionLabel(label: 'Appearance', textSecondary: textSecondary),
+            _SettingsCard(cardBg: cardBg, borderColor: borderColor, children: [
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
@@ -77,20 +70,22 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              Divider(height: 1, color: border),
-              // Accent color
+              Divider(height: 1, color: borderColor),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Accent Color', style: AppTextStyles.bodyL.copyWith(color: textPrimary)),
+                    Text('Accent Color',
+                        style: AppTextStyles.bodyL.copyWith(color: textPrimary)),
                     const SizedBox(height: 4),
-                    Text('アクセントカラー', style: AppTextStyles.jpXS.copyWith(color: textSecondary)),
+                    Text('アクセントカラー',
+                        style: AppTextStyles.jpXS.copyWith(color: textSecondary)),
                     const SizedBox(height: AppSpacing.md),
                     Row(
                       children: AppColors.accentPresets.map((color) {
-                        final isSelected = settings.accentColor.value == color.value;
+                        final isSelected =
+                            settings.accentColor.toARGB32() == color.toARGB32();
                         return Padding(
                           padding: const EdgeInsets.only(right: AppSpacing.md),
                           child: GestureDetector(
@@ -108,7 +103,9 @@ class SettingsScreen extends ConsumerWidget {
                                     ? Border.all(color: textPrimary, width: 2.5)
                                     : null,
                                 boxShadow: isSelected
-                                    ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8)]
+                                    ? [BoxShadow(
+                                    color: color.withValues(alpha: 0.4),
+                                    blurRadius: 8)]
                                     : null,
                               ),
                               child: isSelected
@@ -125,9 +122,8 @@ class SettingsScreen extends ConsumerWidget {
             ]),
             const SizedBox(height: AppSpacing.xl),
 
-            // ── Stats ──────────────────────────────────────────────────────
-            _SectionLabel(label: 'Data'),
-            _SettingsCard(children: [
+            _SectionLabel(label: 'Data', textSecondary: textSecondary),
+            _SettingsCard(cardBg: cardBg, borderColor: borderColor, children: [
               _TappableRow(
                 icon: Icons.bar_chart_rounded,
                 label: 'Productivity Stats',
@@ -142,16 +138,15 @@ class SettingsScreen extends ConsumerWidget {
             ]),
             const SizedBox(height: AppSpacing.xl),
 
-            // ── About ──────────────────────────────────────────────────────
-            _SectionLabel(label: 'About'),
-            _SettingsCard(children: [
+            _SectionLabel(label: 'About', textSecondary: textSecondary),
+            _SettingsCard(cardBg: cardBg, borderColor: borderColor, children: [
               _InfoRow(
                 label: 'Version',
                 value: '1.0.0',
                 textSecondary: textSecondary,
                 textPrimary: textPrimary,
               ),
-              Divider(height: 1, color: border),
+              Divider(height: 1, color: borderColor),
               _InfoRow(
                 label: 'Storage',
                 value: '100% Offline · No tracking',
@@ -168,12 +163,12 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
+  const _SectionLabel({required this.label, required this.textSecondary});
   final String label;
+  final Color textSecondary;
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = Theme.of(context).colorScheme.outline;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Text(
@@ -188,18 +183,22 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.children});
+  const _SettingsCard({
+    required this.children,
+    required this.cardBg,
+    required this.borderColor,
+  });
   final List<Widget> children;
+  final Color cardBg;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    final border = Theme.of(context).colorScheme.outline;
     return Container(
       decoration: BoxDecoration(
-        color: surface,
+        color: cardBg,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
+        border: Border.all(color: borderColor),
       ),
       child: Column(children: children),
     );

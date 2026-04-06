@@ -22,6 +22,13 @@ final sharedPrefsProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('Override in ProviderScope');
 });
 
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError(
+    'sharedPreferencesProvider was not initialized. '
+        'Override it in ProviderScope inside main.dart.',
+  );
+});
+
 // ── SETTINGS NOTIFIER ────────────────────────────────────────────────────────
 
 class SettingsState {

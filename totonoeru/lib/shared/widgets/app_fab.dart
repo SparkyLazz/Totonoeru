@@ -82,25 +82,13 @@ class _AppFabState extends State<AppFab> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final accent = Theme.of(context).extension<AppAccentColors>()!;
 
-    return Stack(
-      alignment: Alignment.bottomRight,
-      clipBehavior: Clip.none,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Backdrop tap-to-dismiss
-        if (_isOpen)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _close,
-              behavior: HitTestBehavior.opaque,
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-
         // Choice menu
-        Positioned(
-          bottom: AppSpacing.fabSize + AppSpacing.md,
-          right: 0,
-          child: AnimatedBuilder(
+        if (_isOpen)
+          AnimatedBuilder(
             animation: _controller,
             builder: (context, child) => Transform.scale(
               scale: _scaleAnim.value,
@@ -113,7 +101,8 @@ class _AppFabState extends State<AppFab> with SingleTickerProviderStateMixin {
               onAddTimeBlock: _handleAddTimeBlock,
             ),
           ),
-        ),
+
+        const SizedBox(height: 12),
 
         // FAB button
         AnimatedBuilder(
