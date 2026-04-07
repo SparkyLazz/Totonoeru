@@ -27,23 +27,18 @@ const ProductivityStatsSchema = CollectionSchema(
       name: r'focusMinutes',
       type: IsarType.long,
     ),
-    r'isToday': PropertySchema(
-      id: 2,
-      name: r'isToday',
-      type: IsarType.bool,
-    ),
     r'streakDay': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'streakDay',
       type: IsarType.long,
     ),
     r'tasksCompleted': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'tasksCompleted',
       type: IsarType.long,
     ),
     r'tasksCreated': PropertySchema(
-      id: 5,
+      id: 4,
       name: r'tasksCreated',
       type: IsarType.long,
     )
@@ -93,10 +88,9 @@ void _productivityStatsSerialize(
 ) {
   writer.writeDateTime(offsets[0], object.date);
   writer.writeLong(offsets[1], object.focusMinutes);
-  writer.writeBool(offsets[2], object.isToday);
-  writer.writeLong(offsets[3], object.streakDay);
-  writer.writeLong(offsets[4], object.tasksCompleted);
-  writer.writeLong(offsets[5], object.tasksCreated);
+  writer.writeLong(offsets[2], object.streakDay);
+  writer.writeLong(offsets[3], object.tasksCompleted);
+  writer.writeLong(offsets[4], object.tasksCreated);
 }
 
 ProductivityStats _productivityStatsDeserialize(
@@ -109,9 +103,9 @@ ProductivityStats _productivityStatsDeserialize(
   object.date = reader.readDateTime(offsets[0]);
   object.focusMinutes = reader.readLong(offsets[1]);
   object.id = id;
-  object.streakDay = reader.readLong(offsets[3]);
-  object.tasksCompleted = reader.readLong(offsets[4]);
-  object.tasksCreated = reader.readLong(offsets[5]);
+  object.streakDay = reader.readLong(offsets[2]);
+  object.tasksCompleted = reader.readLong(offsets[3]);
+  object.tasksCreated = reader.readLong(offsets[4]);
   return object;
 }
 
@@ -127,12 +121,10 @@ P _productivityStatsDeserializeProp<P>(
     case 1:
       return (reader.readLong(offset)) as P;
     case 2:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
       return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readLong(offset)) as P;
-    case 5:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -560,16 +552,6 @@ extension ProductivityStatsQueryFilter
   }
 
   QueryBuilder<ProductivityStats, ProductivityStats, QAfterFilterCondition>
-      isTodayEqualTo(bool value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isToday',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<ProductivityStats, ProductivityStats, QAfterFilterCondition>
       streakDayEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -775,20 +757,6 @@ extension ProductivityStatsQuerySortBy
   }
 
   QueryBuilder<ProductivityStats, ProductivityStats, QAfterSortBy>
-      sortByIsToday() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isToday', Sort.asc);
-    });
-  }
-
-  QueryBuilder<ProductivityStats, ProductivityStats, QAfterSortBy>
-      sortByIsTodayDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isToday', Sort.desc);
-    });
-  }
-
-  QueryBuilder<ProductivityStats, ProductivityStats, QAfterSortBy>
       sortByStreakDay() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'streakDay', Sort.asc);
@@ -875,20 +843,6 @@ extension ProductivityStatsQuerySortThenBy
   }
 
   QueryBuilder<ProductivityStats, ProductivityStats, QAfterSortBy>
-      thenByIsToday() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isToday', Sort.asc);
-    });
-  }
-
-  QueryBuilder<ProductivityStats, ProductivityStats, QAfterSortBy>
-      thenByIsTodayDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isToday', Sort.desc);
-    });
-  }
-
-  QueryBuilder<ProductivityStats, ProductivityStats, QAfterSortBy>
       thenByStreakDay() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'streakDay', Sort.asc);
@@ -948,13 +902,6 @@ extension ProductivityStatsQueryWhereDistinct
   }
 
   QueryBuilder<ProductivityStats, ProductivityStats, QDistinct>
-      distinctByIsToday() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'isToday');
-    });
-  }
-
-  QueryBuilder<ProductivityStats, ProductivityStats, QDistinct>
       distinctByStreakDay() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'streakDay');
@@ -994,12 +941,6 @@ extension ProductivityStatsQueryProperty
       focusMinutesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'focusMinutes');
-    });
-  }
-
-  QueryBuilder<ProductivityStats, bool, QQueryOperations> isTodayProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'isToday');
     });
   }
 

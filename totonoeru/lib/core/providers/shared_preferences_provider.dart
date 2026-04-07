@@ -16,7 +16,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 /// Holds the currently selected accent Color.
 /// Persisted as hex to SharedPreferences on every change.
 final accentColorProvider =
-    StateNotifierProvider<AccentColorNotifier, Color>((ref) {
+StateNotifierProvider<AccentColorNotifier, Color>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return AccentColorNotifier(prefs);
 });
@@ -45,7 +45,7 @@ class AccentColorNotifier extends StateNotifier<Color> {
 
 // ── Theme Mode Provider ───────────────────────────────────────────────────────
 final themeModeProvider =
-    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return ThemeModeNotifier(prefs);
 });
@@ -56,13 +56,19 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   final SharedPreferences _prefs;
 
   static ThemeMode _load(SharedPreferences prefs) {
-    final val = prefs.getString(SettingsKeys.themeMode) ??
-        SettingsDefaults.themeMode;
-    return switch (val) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
+    try {
+      final val = prefs.getString(SettingsKeys.themeMode) ??
+          SettingsDefaults.themeMode;
+      return switch (val) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+    } catch (_) {
+      // Stored type mismatch — fall back to default
+      prefs.setString(SettingsKeys.themeMode, SettingsDefaults.themeMode);
+      return ThemeMode.system;
+    }
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -78,7 +84,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 
 // ── Onboarding Complete Provider ──────────────────────────────────────────────
 final onboardingCompleteProvider =
-    StateNotifierProvider<OnboardingNotifier, bool>((ref) {
+StateNotifierProvider<OnboardingNotifier, bool>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return OnboardingNotifier(prefs);
 });
@@ -86,9 +92,9 @@ final onboardingCompleteProvider =
 class OnboardingNotifier extends StateNotifier<bool> {
   OnboardingNotifier(this._prefs)
       : super(
-          _prefs.getBool(SettingsKeys.onboardingComplete) ??
-              SettingsDefaults.onboardingComplete,
-        );
+    _prefs.getBool(SettingsKeys.onboardingComplete) ??
+        SettingsDefaults.onboardingComplete,
+  );
 
   final SharedPreferences _prefs;
 
@@ -100,7 +106,7 @@ class OnboardingNotifier extends StateNotifier<bool> {
 
 // ── Profile Name Provider ─────────────────────────────────────────────────────
 final profileNameProvider =
-    StateNotifierProvider<ProfileNameNotifier, String>((ref) {
+StateNotifierProvider<ProfileNameNotifier, String>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return ProfileNameNotifier(prefs);
 });
@@ -108,9 +114,9 @@ final profileNameProvider =
 class ProfileNameNotifier extends StateNotifier<String> {
   ProfileNameNotifier(this._prefs)
       : super(
-          _prefs.getString(SettingsKeys.profileName) ??
-              SettingsDefaults.profileName,
-        );
+    _prefs.getString(SettingsKeys.profileName) ??
+        SettingsDefaults.profileName,
+  );
 
   final SharedPreferences _prefs;
 

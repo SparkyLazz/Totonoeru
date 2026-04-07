@@ -31,6 +31,7 @@ class ProductivityStats {
   }
 
   /// True if this record represents today.
+  @ignore
   bool get isToday {
     final now = DateTime.now();
     return date.year == now.year &&
