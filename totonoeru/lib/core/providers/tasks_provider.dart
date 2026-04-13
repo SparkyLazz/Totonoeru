@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/task_repository.dart';
-import '../models/task.dart';
+import '../../data/models/task.dart';
 import '';
 
 // ── Task filter + sort state ──────────────────────────────────────────────────

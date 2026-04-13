@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar/isar.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -55,10 +56,8 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   }
 
   Future<void> _loadCategories() async {
-    final cats = await DatabaseService.instance.isar.categorys
-        .filter()
-        .sortBySortOrder()
-        .findAll();
+    final cats = await DatabaseService.instance.isar.categorys.where().findAll();
+    cats.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     if (mounted) setState(() => _categories = cats);
     // Default category
     if (_selectedCategoryId == null && cats.isNotEmpty) {

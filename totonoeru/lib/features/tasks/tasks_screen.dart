@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:isar/isar.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/category.dart';
@@ -16,11 +17,10 @@ import '../../core/providers/tasks_provider.dart';
 
 // ── Category cache provider ───────────────────────────────────────────────────
 
-final _categoriesProvider = FutureProvider.autoDispose<List<Category>>((ref) {
-  return DatabaseService.instance.isar.categorys
-      .filter()
-      .sortBySortOrder()
-      .findAll();
+final _categoriesProvider = FutureProvider.autoDispose<List<Category>>((ref) async {
+  final cats = await DatabaseService.instance.isar.categorys.where().findAll();
+  cats.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  return cats;
 });
 
 // ── TasksScreen ───────────────────────────────────────────────────────────────
