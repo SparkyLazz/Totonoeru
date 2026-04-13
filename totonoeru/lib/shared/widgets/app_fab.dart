@@ -1,12 +1,13 @@
+// lib/shared/widgets/app_fab.dart
+//
+// Animated FAB with a 2-item choice menu.
+// Fix: uses OverlayPortal so the menu + scrim render at screen level,
+// not clipped inside the FAB's own Stack.
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-/// Animated FAB with a 2-item choice menu.
-/// - FAB rotates 45° to × on open
-/// - Menu springs in above FAB (scale + fade)
-/// - Tap outside → dismiss
-/// - lightImpact on open, lightImpact on menu item tap
 class AppFab extends StatefulWidget {
   const AppFab({
     super.key,
@@ -21,15 +22,26 @@ class AppFab extends StatefulWidget {
   State<AppFab> createState() => _AppFabState();
 }
 
-class _AppFabState extends State<AppFab> with SingleTickerProviderStateMixin {
+class _AppFabState extends State<AppFab> {
+  final OverlayPortalController _overlayCtrl = OverlayPortalController();
   bool _isOpen = false;
 
   void _toggle() {
     HapticFeedback.lightImpact();
-    setState(() => _isOpen = !_isOpen);
+    setState(() {
+      _isOpen = !_isOpen;
+      if (_isOpen) {
+        _overlayCtrl.show();
+      } else {
+        _overlayCtrl.hide();
+      }
+    });
   }
 
-  void _close() => setState(() => _isOpen = false);
+  void _close() {
+    setState(() => _isOpen = false);
+    _overlayCtrl.hide();
+  }
 
   void _onAddTask() {
     HapticFeedback.lightImpact();
@@ -49,60 +61,61 @@ class _AppFabState extends State<AppFab> with SingleTickerProviderStateMixin {
     final surface = Theme.of(context).colorScheme.surface;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
-    return Stack(
-      alignment: Alignment.bottomRight,
-      clipBehavior: Clip.none,
-      children: [
-        // ── Scrim — tap outside to close ─────────────────────────────────
-        if (_isOpen)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _close,
-              child: Container(color: Colors.transparent),
+    return OverlayPortal(
+      controller: _overlayCtrl,
+      overlayChildBuilder: (context) {
+        return Stack(
+          children: [
+            // ── Full-screen scrim ──────────────────────────────────────
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _close,
+                behavior: HitTestBehavior.opaque,
+                child: const ColoredBox(color: Colors.transparent),
+              ),
             ),
-          ),
 
-        // ── Choice Menu ───────────────────────────────────────────────────
-        if (_isOpen)
-          Positioned(
-            bottom: 72,
-            right: 0,
-            child: _FabMenu(
-              onAddTask: _onAddTask,
-              onAddTimeBlock: _onAddTimeBlock,
-              surface: surface,
-              onSurface: onSurface,
-              accent: accent,
-            )
-                .animate()
-                .scale(
-                  begin: const Offset(0.8, 0.8),
-                  end: const Offset(1, 1),
-                  duration: 220.ms,
-                  curve: Curves.easeOutBack,
-                )
-                .fadeIn(duration: 180.ms),
-          ),
-
-        // ── FAB ───────────────────────────────────────────────────────────
-        FloatingActionButton(
-          onPressed: _toggle,
-          backgroundColor: accent,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shape: const CircleBorder(),
-          child: AnimatedRotation(
-            turns: _isOpen ? 0.125 : 0, // 45° = 0.125 turns
-            duration: const Duration(milliseconds: 200),
-            child: const Icon(Icons.add, size: 26),
-          ),
+            // ── Menu — positioned above FAB bottom-right ───────────────
+            Positioned(
+              bottom: 88, // above FAB (56px) + margin
+              right: 16,
+              child: _FabMenu(
+                onAddTask: _onAddTask,
+                onAddTimeBlock: _onAddTimeBlock,
+                surface: surface,
+                onSurface: onSurface,
+                accent: accent,
+              )
+                  .animate()
+                  .scale(
+                begin: const Offset(0.85, 0.85),
+                end: const Offset(1, 1),
+                duration: 200.ms,
+                curve: Curves.easeOutBack,
+                alignment: Alignment.bottomRight,
+              )
+                  .fadeIn(duration: 160.ms),
+            ),
+          ],
+        );
+      },
+      child: FloatingActionButton(
+        onPressed: _toggle,
+        backgroundColor: accent,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: AnimatedRotation(
+          turns: _isOpen ? 0.125 : 0, // 45° = 0.125 turns
+          duration: const Duration(milliseconds: 200),
+          child: const Icon(Icons.add, size: 26),
         ),
-      ],
+      ),
     );
   }
 }
 
-// ── Menu Card ─────────────────────────────────────────────────────────────────
+// ── Menu card ─────────────────────────────────────────────────────────────────
 
 class _FabMenu extends StatelessWidget {
   const _FabMenu({

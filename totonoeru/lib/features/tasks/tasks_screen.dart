@@ -14,6 +14,7 @@ import '../../shared/widgets/app_toast.dart';
 import 'add_task_sheet.dart';
 import 'task_card.dart';
 import '../../core/providers/tasks_provider.dart';
+import '../schedule/add_time_block_sheet.dart'; // ← ADD
 
 // ── Category cache provider ───────────────────────────────────────────────────
 
@@ -33,7 +34,6 @@ class TasksScreen extends ConsumerStatefulWidget {
 }
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
-  // Kanban toggle kept for Week 3 — list only for now
   bool _isKanban = false;
 
   void _openAddTask({Task? editTask}) {
@@ -42,6 +42,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AddTaskSheet(editTask: editTask),
+    );
+  }
+
+  void _openAddTimeBlock() { // ← ADD
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AddTimeBlockSheet(),
     );
   }
 
@@ -160,7 +169,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       ),
       floatingActionButton: AppFab(
         onAddTask: _openAddTask,
-        onAddTimeBlock: () {},
+        onAddTimeBlock: _openAddTimeBlock, // ← CHANGED
       ),
     );
   }
@@ -273,11 +282,8 @@ class _SwipeableTaskCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Dismissible(
       key: ValueKey('dismiss_${task.id}'),
-      // ── Swipe right → complete (2.09) ──────────────────────────────
       background: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 24),
@@ -288,7 +294,6 @@ class _SwipeableTaskCard extends ConsumerWidget {
         child: const Icon(Icons.check_circle_rounded,
             color: AppColors.statusDone, size: 24),
       ),
-      // ── Swipe left → delete (2.10) ─────────────────────────────────
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
@@ -302,15 +307,15 @@ class _SwipeableTaskCard extends ConsumerWidget {
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
           onComplete();
-          return false; // don't remove from list, just toggle
+          return false;
         } else {
           onDelete();
-          return false; // toast + undo handles removal
+          return false;
         }
       },
       child: GestureDetector(
         onLongPress: () {
-          HapticFeedback.heavyImpact(); // 2.11
+          HapticFeedback.heavyImpact();
           _showContextMenu(context);
         },
         child: TaskCard(
@@ -347,30 +352,18 @@ class _SwipeableTaskCard extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.edit_rounded),
               title: const Text('Edit', style: TextStyle(fontFamily: 'DMSans')),
-              onTap: () {
-                Navigator.pop(context);
-                onEdit();
-              },
+              onTap: () { Navigator.pop(context); onEdit(); },
             ),
             ListTile(
               leading: const Icon(Icons.copy_rounded),
-              title: const Text('Duplicate',
-                  style: TextStyle(fontFamily: 'DMSans')),
-              onTap: () {
-                Navigator.pop(context);
-                onDuplicate();
-              },
+              title: const Text('Duplicate', style: TextStyle(fontFamily: 'DMSans')),
+              onTap: () { Navigator.pop(context); onDuplicate(); },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_rounded,
-                  color: AppColors.priorityHigh),
+              leading: const Icon(Icons.delete_rounded, color: AppColors.priorityHigh),
               title: const Text('Delete',
-                  style: TextStyle(
-                      fontFamily: 'DMSans', color: AppColors.priorityHigh)),
-              onTap: () {
-                Navigator.pop(context);
-                onDelete();
-              },
+                  style: TextStyle(fontFamily: 'DMSans', color: AppColors.priorityHigh)),
+              onTap: () { Navigator.pop(context); onDelete(); },
             ),
             const SizedBox(height: 8),
           ],
@@ -404,8 +397,7 @@ class _SectionHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: textSecondary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
@@ -445,7 +437,6 @@ class _FilterChipRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         scrollDirection: Axis.horizontal,
         children: [
-          // "All" chip
           _Chip(
             label: 'All',
             isSelected: selectedCategoryId == null,
@@ -530,9 +521,7 @@ class _ViewToggleButton extends StatelessWidget {
           color: Theme.of(context).colorScheme.surface,
         ),
         child: Icon(
-          isKanban
-              ? Icons.view_list_rounded
-              : Icons.view_kanban_outlined,
+          isKanban ? Icons.view_list_rounded : Icons.view_kanban_outlined,
           size: 18,
           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
         ),
@@ -544,10 +533,7 @@ class _ViewToggleButton extends StatelessWidget {
 // ── Sort menu ─────────────────────────────────────────────────────────────────
 
 class _SortMenuButton extends StatelessWidget {
-  const _SortMenuButton({
-    required this.currentMode,
-    required this.onSelect,
-  });
+  const _SortMenuButton({required this.currentMode, required this.onSelect});
   final TaskSortMode currentMode;
   final ValueChanged<TaskSortMode> onSelect;
 
@@ -570,8 +556,7 @@ class _SortMenuButton extends StatelessWidget {
     );
   }
 
-  PopupMenuItem<TaskSortMode> _item(
-      TaskSortMode mode, String label, IconData icon) =>
+  PopupMenuItem<TaskSortMode> _item(TaskSortMode mode, String label, IconData icon) =>
       PopupMenuItem(
         value: mode,
         child: Row(
@@ -588,7 +573,7 @@ class _SortMenuButton extends StatelessWidget {
       );
 }
 
-// ── Empty state (2.21) ────────────────────────────────────────────────────────
+// ── Empty state ───────────────────────────────────────────────────────────────
 
 class _TasksEmptyState extends StatelessWidget {
   const _TasksEmptyState();
@@ -605,7 +590,6 @@ class _TasksEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Simple SVG-style illustration using widgets
             Container(
               width: 80,
               height: 80,

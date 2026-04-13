@@ -8,6 +8,7 @@ import '../../features/tasks/add_task_sheet.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../features/focus/focus_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/settings/categories_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../shared/widgets/app_scaffold.dart';
 import '../providers/shared_preferences_provider.dart';
@@ -22,6 +23,7 @@ abstract final class AppRoutes {
   static const scheduleMonth = '/schedule/month';
   static const focus = '/focus';
   static const settings = '/settings';
+  static const settingsCategories = '/settings/categories'; // ← 3.07
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -61,7 +63,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Branch 1 — Tasks (Week 2 wired)
+          // Branch 1 — Tasks
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -148,6 +150,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: SettingsScreen(),
                 ),
+                routes: [
+                  // 3.07 — Category management screen
+                  GoRoute(
+                    path: 'categories',
+                    pageBuilder: (context, state) => const MaterialPage(
+                      child: CategoriesScreen(),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

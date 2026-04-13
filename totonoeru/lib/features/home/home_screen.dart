@@ -1,8 +1,11 @@
+// lib/features/home/home_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/shared_preferences_provider.dart';
 import '../../shared/widgets/app_fab.dart';
 import '../tasks/add_task_sheet.dart';
+import '../schedule/add_time_block_sheet.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -26,6 +29,15 @@ class HomeScreen extends ConsumerWidget {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => const AddTaskSheet(),
+      );
+    }
+
+    void openAddTimeBlock() {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const AddTimeBlockSheet(),
       );
     }
 
@@ -58,14 +70,12 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 32),
-
                     _WelcomeCard(
                       accent: accent,
                       textPrimary: textPrimary,
                       onAddTask: openAddTask,
                     ),
                     const SizedBox(height: 24),
-
                     _SectionPlaceholder(
                       label: 'Today\'s tasks',
                       accent: accent,
@@ -86,7 +96,7 @@ class HomeScreen extends ConsumerWidget {
       ),
       floatingActionButton: AppFab(
         onAddTask: openAddTask,
-        onAddTimeBlock: () {},
+        onAddTimeBlock: openAddTimeBlock, // ← wired
       ),
     );
   }
