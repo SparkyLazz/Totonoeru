@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/shared_preferences_provider.dart';
 import '../../shared/widgets/app_fab.dart';
+import '../tasks/add_task_sheet.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -16,8 +17,17 @@ class HomeScreen extends ConsumerWidget {
     final greeting = hour < 12
         ? 'Good morning'
         : hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
+        ? 'Good afternoon'
+        : 'Good evening';
+
+    void openAddTask() {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const AddTaskSheet(),
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -49,11 +59,13 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 32),
 
-                    // ── Welcome card (task 1.37) ──────────────────────────
-                    _WelcomeCard(accent: accent, textPrimary: textPrimary),
+                    _WelcomeCard(
+                      accent: accent,
+                      textPrimary: textPrimary,
+                      onAddTask: openAddTask,
+                    ),
                     const SizedBox(height: 24),
 
-                    // Placeholder sections — built in Week 4
                     _SectionPlaceholder(
                       label: 'Today\'s tasks',
                       accent: accent,
@@ -73,8 +85,8 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: AppFab(
-        onAddTask: () {}, // wired in Week 2
-        onAddTimeBlock: () {}, // wired in Week 3
+        onAddTask: openAddTask,
+        onAddTimeBlock: () {},
       ),
     );
   }
@@ -91,9 +103,14 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _WelcomeCard extends StatelessWidget {
-  const _WelcomeCard({required this.accent, required this.textPrimary});
+  const _WelcomeCard({
+    required this.accent,
+    required this.textPrimary,
+    required this.onAddTask,
+  });
   final Color accent;
   final Color textPrimary;
+  final VoidCallback onAddTask;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +145,7 @@ class _WelcomeCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () {}, // opens Add Task sheet — wired in Week 2
+            onTap: onAddTask,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -182,9 +199,7 @@ class _SectionPlaceholder extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Theme.of(context).dividerColor,
-            ),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Center(
             child: Text(
