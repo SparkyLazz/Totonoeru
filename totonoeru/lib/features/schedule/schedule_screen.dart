@@ -1,4 +1,6 @@
 // lib/features/schedule/schedule_screen.dart
+//
+// Updated Week 4: replaces _PlaceholderView stubs with real views
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,10 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/time_blocks_provider.dart';
 import '../../core/theme/app_typography.dart';
 import '../../shared/widgets/app_fab.dart';
-import '../tasks/add_task_sheet.dart'; // ← ADD
+import '../tasks/add_task_sheet.dart';
 import 'add_time_block_sheet.dart';
 import 'hourly_timeline.dart';
+import 'month_calendar.dart';
 import 'week_strip.dart';
+import 'weekly_overview.dart';
 
 export 'schedule_screen.dart' show ScheduleView;
 
@@ -45,13 +49,18 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  void _openAddTask() { // ← ADD
+  void _openAddTask() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const AddTaskSheet(),
     );
+  }
+
+  // Called when week/month view taps a day → switch to day view
+  void _switchToDay(DateTime day) {
+    setState(() => _view = ScheduleView.day);
   }
 
   @override
@@ -61,7 +70,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final textSecondary = scheme.onSurface.withOpacity(0.5);
 
     return Scaffold(
-      backgroundColor: scheme.background,
+      backgroundColor: scheme.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -100,23 +109,37 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
             const SizedBox(height: 16),
 
-            const WeekStrip(),
-
-            const SizedBox(height: 4),
+            // WeekStrip is shown for day view only
+            if (_view == ScheduleView.day) ...[
+              const WeekStrip(),
+              const SizedBox(height: 4),
+            ],
 
             Expanded(
-              child: _view == ScheduleView.day
-                  ? HourlyTimeline(onTapEmpty: _openAddBlock)
-                  : _PlaceholderView(view: _view),
+              child: _buildBody(),
             ),
           ],
         ),
       ),
       floatingActionButton: AppFab(
-        onAddTask: _openAddTask,       // ← CHANGED from () {}
+        onAddTask: _openAddTask,
         onAddTimeBlock: _openAddBlock,
       ),
     );
+  }
+
+  Widget _buildBody() {
+    return switch (_view) {
+      ScheduleView.day =>
+          HourlyTimeline(onTapEmpty: _openAddBlock),
+      ScheduleView.week =>
+          WeeklyOverview(onDayTapped: _switchToDay),
+      ScheduleView.month =>
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+            child: MonthCalendar(onDayTapped: _switchToDay),
+          ),
+    };
   }
 }
 
@@ -167,42 +190,6 @@ class _ViewPill extends StatelessWidget {
             ),
           );
         }).toList(),
-      ),
-    );
-  }
-}
-
-// ── Week/Month placeholder (built in Week 4) ──────────────────────────────────
-
-class _PlaceholderView extends StatelessWidget {
-  const _PlaceholderView({required this.view});
-  final ScheduleView view;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = view == ScheduleView.week ? 'Week View' : 'Month View';
-    final sub = view == ScheduleView.week ? '週間 — Week 4' : '月間 — Week 4';
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.calendar_view_week_rounded,
-              size: 48,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.15)),
-          const SizedBox(height: 16),
-          Text(label,
-              style: AppTypography.headingMedium.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.3))),
-          Text(sub,
-              style: AppTypography.jpLight.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.2))),
-        ],
       ),
     );
   }

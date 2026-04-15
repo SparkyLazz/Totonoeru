@@ -1,11 +1,13 @@
 // lib/features/schedule/hourly_timeline.dart
 //
-// Tasks 3.14 + 3.15 + 3.17
-// 3.14 — HourlyTimeline: scrollable 24hr vertical axis, 60px/hr
+// Tasks 3.14 + 3.15 + 3.17 + 4.23
+// 3.14 — HourlyTimeline: scrollable 24hr vertical axis, 60px/hr (now 64px)
 // 3.15 — TimeBlockWidget: color-coded, overlap layout engine
 // 3.17 — Auto-scroll to current time on open
+// 4.23 — Drag-to-reschedule with 15-minute snap
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/categories_provider.dart';
 import '../../core/providers/time_blocks_provider.dart';
@@ -13,22 +15,23 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/category.dart';
 import '../../data/models/time_block.dart';
+import '../../data/repositories/time_block_repository.dart';
+import '../../shared/widgets/app_toast.dart';
 import 'time_block_detail_sheet.dart';
 import 'schedule_empty_state.dart';
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
-const double _hourHeight = 64.0;   // px per hour
-const double _labelWidth = 52.0;   // left gutter for time labels
-const double _topPad = 8.0;        // padding above 00:00
+const double _hourHeight = 64.0;
+const double _labelWidth = 52.0;
+const double _topPad = 8.0;
 const int _hours = 24;
+const int _snapMinutes = 15; // 4.23: 15-min snap
 
-// ── HourlyTimeline ────────────────────────────────────────────────────────────
+// ── HourlyTimeline ─────────────────────────────────────────────────────────────
 
 class HourlyTimeline extends ConsumerStatefulWidget {
   const HourlyTimeline({super.key, this.onTapEmpty});
-
-  /// Called when user taps an empty slot — passes approximate DateTime.
   final ValueChanged<DateTime>? onTapEmpty;
 
   @override
@@ -39,10 +42,13 @@ class _HourlyTimelineState extends ConsumerState<HourlyTimeline> {
   final ScrollController _scroll = ScrollController();
   bool _didAutoScroll = false;
 
+  // ── 4.23 drag state ────────────────────────────────────────────────────
+  TimeBlock? _draggingBlock;
+  double _dragOffsetY = 0; // px from block top where user grabbed
+
   @override
   void initState() {
     super.initState();
-    // Task 3.17 — scroll to current time after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToNow());
   }
 
@@ -59,14 +65,88 @@ class _HourlyTimelineState extends ConsumerState<HourlyTimeline> {
     final offsetPx = _topPad +
         (now.hour * _hourHeight) +
         (now.minute / 60 * _hourHeight) -
-        120; // show 2hr above current time
-    final target = offsetPx.clamp(0.0, _scroll.position.maxScrollExtent);
-    _scroll.animateTo(
-      target,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOut,
+        120;
+    final target =
+    offsetPx.clamp(0.0, _scroll.position.maxScrollExtent);
+    _scroll.animateTo(target,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOut);
+  }
+
+  // ── 4.23: Snap to 15-min grid ─────────────────────────────────────────
+
+  DateTime _snapToGrid(DateTime dt) {
+    final minutes = dt.minute;
+    final snapped = (minutes / _snapMinutes).round() * _snapMinutes;
+    return DateTime(dt.year, dt.month, dt.day, dt.hour).add(
+      Duration(minutes: snapped.clamp(0, 59)),
     );
   }
+
+  DateTime _yToDateTime(double y, DateTime selectedDay) {
+    final totalMinutes = ((y - _topPad) / _hourHeight * 60)
+        .clamp(0, _hours * 60 - 1)
+        .toInt();
+    return DateTime(
+      selectedDay.year,
+      selectedDay.month,
+      selectedDay.day,
+      totalMinutes ~/ 60,
+      totalMinutes % 60,
+    );
+  }
+
+  double _dateTimeToY(DateTime dt) {
+    return _topPad + (dt.hour * 60 + dt.minute) / 60 * _hourHeight;
+  }
+
+  // ── 4.23: Handle drop ─────────────────────────────────────────────────
+
+  Future<void> _onDrop(double globalY, TimeBlock block) async {
+    // Convert global Y → local Y within the scrollable canvas
+    final RenderBox? box =
+    context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final localY = box.globalToLocal(Offset(0, globalY)).dy +
+        _scroll.offset -
+        _dragOffsetY;
+
+    final selected = ref.read(selectedDateProvider);
+    final rawStart = _yToDateTime(localY, selected);
+    final snappedStart = _snapToGrid(rawStart);
+    final duration = block.endTime.difference(block.startTime);
+    final snappedEnd = snappedStart.add(duration);
+
+    // Don't update if nothing changed
+    if (snappedStart == block.startTime) {
+      setState(() => _draggingBlock = null);
+      return;
+    }
+
+    try {
+      await TimeBlockRepository.instance.updateTimeBlock(
+        block,
+        startTime: snappedStart,
+        endTime: snappedEnd,
+      );
+      ref.invalidate(dayBlocksProvider);
+      if (mounted) {
+        HapticFeedback.mediumImpact();
+        AppToast.show(
+          context,
+          'Moved to ${_fmt(snappedStart)}',
+        );
+      }
+    } catch (e) {
+      if (mounted) AppToast.show(context, 'Error: $e');
+    } finally {
+      if (mounted) setState(() => _draggingBlock = null);
+    }
+  }
+
+  String _fmt(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +162,10 @@ class _HourlyTimelineState extends ConsumerState<HourlyTimeline> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (blocks) => blocks.isEmpty
-          ? ScheduleEmptyState(onAddBlock: widget.onTapEmpty != null
-          ? () => widget.onTapEmpty!(DateTime.now())
-          : null)
+          ? ScheduleEmptyState(
+          onAddBlock: widget.onTapEmpty != null
+              ? () => widget.onTapEmpty!(DateTime.now())
+              : null)
           : _buildTimeline(context, blocks, catMap, selected),
     );
   }
@@ -101,10 +182,7 @@ class _HourlyTimelineState extends ConsumerState<HourlyTimeline> {
         selectedDay.month == now.month &&
         selectedDay.day == now.day;
 
-    // Total height of the canvas
     final totalHeight = _topPad + _hours * _hourHeight + _topPad;
-
-    // Compute overlapping layout columns
     final layoutBlocks = _computeLayout(blocks);
 
     return SingleChildScrollView(
@@ -113,7 +191,7 @@ class _HourlyTimelineState extends ConsumerState<HourlyTimeline> {
         height: totalHeight,
         child: Stack(
           children: [
-            // ── Hour grid lines + labels ─────────────────────────────
+            // Hour grid lines + labels
             ...List.generate(_hours, (h) {
               final top = _topPad + h * _hourHeight;
               return Positioned(
@@ -137,20 +215,53 @@ class _HourlyTimelineState extends ConsumerState<HourlyTimeline> {
               );
             }),
 
-            // ── Current time indicator (task 3.17) ───────────────────
-            if (isToday) _CurrentTimeIndicator(now: now, scheme: scheme),
+            // Snap grid indicator while dragging
+            if (_draggingBlock != null)
+              ..._buildSnapLines(scheme),
 
-            // ── Time block widgets (task 3.15) ───────────────────────
-            ...layoutBlocks.map((lb) => _PositionedBlock(
+            // Current time indicator
+            if (isToday)
+              _CurrentTimeIndicator(now: now, scheme: scheme),
+
+            // Time block widgets (with drag support 4.23)
+            ...layoutBlocks.map((lb) => _DraggableBlock(
+              key: ValueKey(lb.block.uuid),
               layoutBlock: lb,
               catMap: catMap,
               scheme: scheme,
+              isDragging: _draggingBlock?.uuid == lb.block.uuid,
               onTap: () => _openDetail(context, lb.block),
+              onDragStarted: (offsetY) {
+                HapticFeedback.heavyImpact();
+                setState(() {
+                  _draggingBlock = lb.block;
+                  _dragOffsetY = offsetY;
+                });
+              },
+              onDragEnd: (globalY) => _onDrop(globalY, lb.block),
+              onDragCanceled: () =>
+                  setState(() => _draggingBlock = null),
             )),
           ],
         ),
       ),
     );
+  }
+
+  // 15-min snap lines shown while dragging
+  List<Widget> _buildSnapLines(ColorScheme scheme) {
+    return List.generate(_hours * 4, (i) {
+      final top = _topPad + i * (_hourHeight / 4);
+      return Positioned(
+        top: top,
+        left: _labelWidth,
+        right: 0,
+        child: Container(
+          height: 0.5,
+          color: scheme.primary.withOpacity(0.08),
+        ),
+      );
+    });
   }
 
   void _openDetail(BuildContext context, TimeBlock block) {
@@ -188,7 +299,6 @@ class _HourRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Time label
             SizedBox(
               width: labelWidth,
               child: Padding(
@@ -202,7 +312,6 @@ class _HourRow extends StatelessWidget {
                 ),
               ),
             ),
-            // Divider line
             Expanded(
               child: Container(
                 height: 0.5,
@@ -218,7 +327,7 @@ class _HourRow extends StatelessWidget {
   }
 }
 
-// ── Current time indicator (red line + dot) ───────────────────────────────────
+// ── Current time indicator ────────────────────────────────────────────────────
 
 class _CurrentTimeIndicator extends StatelessWidget {
   const _CurrentTimeIndicator({required this.now, required this.scheme});
@@ -230,7 +339,6 @@ class _CurrentTimeIndicator extends StatelessWidget {
     final top = _topPad +
         now.hour * _hourHeight +
         now.minute / 60 * _hourHeight;
-
     return Positioned(
       top: top,
       left: _labelWidth - 5,
@@ -270,51 +378,34 @@ class _LayoutBlock {
   final int totalColumns;
 }
 
-/// Groups overlapping blocks and assigns them columns side-by-side.
 List<_LayoutBlock> _computeLayout(List<TimeBlock> blocks) {
   if (blocks.isEmpty) return [];
-
-  // Sort by start time
   final sorted = [...blocks]
     ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
   final result = <_LayoutBlock>[];
-
-  // Process in overlap groups
   int i = 0;
   while (i < sorted.length) {
-    // Collect all blocks overlapping with block i
     final group = <TimeBlock>[sorted[i]];
     var groupEnd = sorted[i].endTime;
     int j = i + 1;
-    while (j < sorted.length && sorted[j].startTime.isBefore(groupEnd)) {
+    while (j < sorted.length &&
+        sorted[j].startTime.isBefore(groupEnd)) {
       group.add(sorted[j]);
       if (sorted[j].endTime.isAfter(groupEnd)) groupEnd = sorted[j].endTime;
       j++;
     }
 
-    // Assign columns greedily
-    final cols = <int, DateTime>{}; // col → latest end time in that col
+    final cols = <int, DateTime>{};
     for (final b in group) {
       int col = 0;
-      while (cols.containsKey(col) && !cols[col]!.isAfter(b.startTime)) {
-        col++;
-      }
-      // Actually: find first column whose end <= this block's start
-      col = 0;
-      while (cols.containsKey(col) &&
-          cols[col]!.isAfter(b.startTime)) {
+      while (cols.containsKey(col) && cols[col]!.isAfter(b.startTime)) {
         col++;
       }
       cols[col] = b.endTime;
-      result.add(_LayoutBlock(
-        block: b,
-        column: col,
-        totalColumns: 0, // patch below
-      ));
+      result.add(_LayoutBlock(block: b, column: col, totalColumns: 0));
     }
 
-    // Patch totalColumns for all blocks in this group
     final maxCol = cols.keys.fold(0, (m, c) => c > m ? c : m) + 1;
     for (var k = result.length - group.length; k < result.length; k++) {
       result[k] = _LayoutBlock(
@@ -323,45 +414,50 @@ List<_LayoutBlock> _computeLayout(List<TimeBlock> blocks) {
         totalColumns: maxCol,
       );
     }
-
     i = j;
   }
-
   return result;
 }
 
-// ── Positioned block ──────────────────────────────────────────────────────────
+// ── Draggable block (4.23) ────────────────────────────────────────────────────
 
-class _PositionedBlock extends StatelessWidget {
-  const _PositionedBlock({
+class _DraggableBlock extends StatelessWidget {
+  const _DraggableBlock({
+    super.key,
     required this.layoutBlock,
     required this.catMap,
     required this.scheme,
+    required this.isDragging,
     required this.onTap,
+    required this.onDragStarted,
+    required this.onDragEnd,
+    required this.onDragCanceled,
   });
 
   final _LayoutBlock layoutBlock;
   final Map<String, Category> catMap;
   final ColorScheme scheme;
+  final bool isDragging;
   final VoidCallback onTap;
+  final ValueChanged<double> onDragStarted; // offsetY within block
+  final ValueChanged<double> onDragEnd;     // globalY of pointer
+  final VoidCallback onDragCanceled;
 
   @override
   Widget build(BuildContext context) {
     final block = layoutBlock.block;
-    final startMinutes =
-        block.startTime.hour * 60 + block.startTime.minute;
+    final startMinutes = block.startTime.hour * 60 + block.startTime.minute;
     final endMinutes = block.endTime.hour * 60 + block.endTime.minute;
     final durationMinutes = (endMinutes - startMinutes).clamp(15, 24 * 60);
 
     final top = _topPad + startMinutes / 60 * _hourHeight;
     final height = (durationMinutes / 60 * _hourHeight).clamp(20.0, double.infinity);
 
-    // Compute left/width based on column
     final availableWidth =
         MediaQuery.of(context).size.width - _labelWidth - 16;
     final colWidth = availableWidth / layoutBlock.totalColumns;
     final left = _labelWidth + layoutBlock.column * colWidth;
-    final width = colWidth - 4; // 4px gap between columns
+    final width = colWidth - 4;
 
     final category = catMap[block.categoryId];
     final blockColor = block.colorOverride != null
@@ -375,17 +471,90 @@ class _PositionedBlock extends StatelessWidget {
       left: left,
       width: width,
       height: height,
-      child: TimeBlockWidget(
-        block: block,
-        color: blockColor,
-        category: category,
-        onTap: onTap,
+      child: Opacity(
+        opacity: isDragging ? 0.35 : 1.0,
+        child: LongPressDraggable<String>(
+          data: block.uuid,
+          delay: const Duration(milliseconds: 350),
+          onDragStarted: () {
+            // We'll estimate offset as half block height
+            onDragStarted(height / 2);
+          },
+          onDragEnd: (details) {
+            onDragEnd(details.offset.dy + height / 2);
+          },
+          onDraggableCanceled: (_, __) => onDragCanceled(),
+          feedback: Material(
+            color: Colors.transparent,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: _FeedbackBlock(
+                block: block,
+                color: blockColor,
+                category: category,
+              ),
+            ),
+          ),
+          childWhenDragging: const SizedBox.shrink(),
+          child: TimeBlockWidget(
+            block: block,
+            color: blockColor,
+            category: category,
+            onTap: onTap,
+          ),
+        ),
       ),
     );
   }
 }
 
-// ── TimeBlockWidget (task 3.15) ───────────────────────────────────────────────
+// ── Drag feedback block ───────────────────────────────────────────────────────
+
+class _FeedbackBlock extends StatelessWidget {
+  const _FeedbackBlock({
+    required this.block,
+    required this.color,
+    required this.category,
+  });
+  final TimeBlock block;
+  final Color color;
+  final Category? category;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scale: 1.03,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(left: BorderSide(color: color, width: 3)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
+        child: Text(
+          block.title,
+          style: AppTypography.labelSmall.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+
+// ── TimeBlockWidget (public — used by weekly_overview too) ────────────────────
 
 class TimeBlockWidget extends StatelessWidget {
   const TimeBlockWidget({
@@ -423,7 +592,6 @@ class TimeBlockWidget extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
           child: isShort
-          // Short block: single line
               ? Row(
             children: [
               Expanded(
@@ -447,7 +615,6 @@ class TimeBlockWidget extends StatelessWidget {
               ),
             ],
           )
-          // Normal block: title + time
               : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

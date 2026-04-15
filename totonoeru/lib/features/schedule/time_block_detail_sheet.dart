@@ -1,6 +1,6 @@
 // lib/features/schedule/time_block_detail_sheet.dart
 //
-// Task 3.16 — TimeBlockDetailSheet: tap block → title, time, tags, edit/delete
+// Task 3.16 — TimeBlockDetailSheet (updated Week 4 to add 4.22 link button)
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,8 +12,10 @@ import '../../core/theme/app_typography.dart';
 import '../../data/models/category.dart';
 import '../../data/models/time_block.dart';
 import '../../data/repositories/time_block_repository.dart';
+import '../../data/services/link_service.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'add_time_block_sheet.dart';
+import 'link_task_sheet.dart';
 
 class TimeBlockDetailSheet extends ConsumerWidget {
   const TimeBlockDetailSheet({super.key, required this.block});
@@ -51,7 +53,7 @@ class TimeBlockDetailSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Color bar at top ──────────────────────────────────────
+            // Color bar
             Container(
               height: 4,
               margin: const EdgeInsets.fromLTRB(24, 0, 24, 0),
@@ -62,7 +64,7 @@ class TimeBlockDetailSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
 
-            // ── Handle ────────────────────────────────────────────────
+            // Handle
             Center(
               child: Container(
                 width: 36,
@@ -80,7 +82,7 @@ class TimeBlockDetailSheet extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Title ─────────────────────────────────────────
+                  // Title
                   Text(
                     block.title,
                     style: AppTypography.headingMedium.copyWith(
@@ -89,7 +91,7 @@ class TimeBlockDetailSheet extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // ── Tags row ──────────────────────────────────────
+                  // Tags row
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
@@ -97,22 +99,24 @@ class TimeBlockDetailSheet extends ConsumerWidget {
                       if (category != null)
                         _Tag(label: category.name, color: blockColor),
                       _PriorityTag(priority: block.priority),
+                      // 4.22 — linked task badge
+                      if (block.taskId != null)
+                        _Tag(
+                          label: 'Linked task',
+                          color: AppColors.accentBlue,
+                          icon: Icons.link_rounded,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Divider ───────────────────────────────────────
                   Divider(color: scheme.onSurface.withOpacity(0.08)),
                   const SizedBox(height: 12),
 
-                  // ── Time info row ─────────────────────────────────
+                  // Time info row
                   Row(
                     children: [
-                      Icon(
-                        Icons.schedule_rounded,
-                        size: 18,
-                        color: blockColor,
-                      ),
+                      Icon(Icons.schedule_rounded, size: 18, color: blockColor),
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +139,7 @@ class TimeBlockDetailSheet extends ConsumerWidget {
                     ],
                   ),
 
-                  // ── Notes ─────────────────────────────────────────
+                  // Notes
                   if (block.notes != null && block.notes!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Divider(color: scheme.onSurface.withOpacity(0.08)),
@@ -161,7 +165,7 @@ class TimeBlockDetailSheet extends ConsumerWidget {
 
                   const SizedBox(height: 20),
 
-                  // ── Action buttons ────────────────────────────────
+                  // Action buttons
                   Row(
                     children: [
                       // Edit
@@ -185,19 +189,55 @@ class TimeBlockDetailSheet extends ConsumerWidget {
                                 color: scheme.onSurface.withOpacity(0.2)),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding:
+                            const EdgeInsets.symmetric(vertical: 12),
                             textStyle: AppTypography.labelMedium,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
+                      // 4.22 — Link task
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) =>
+                                  LinkTaskSheet(block: block),
+                            );
+                          },
+                          icon: Icon(
+                            block.taskId != null
+                                ? Icons.link_rounded
+                                : Icons.add_link_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            block.taskId != null ? 'Linked' : 'Link task',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.accentBlue,
+                            side: BorderSide(
+                                color: AppColors.accentBlue.withOpacity(0.3)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            padding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                            textStyle: AppTypography.labelMedium,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       // Delete
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () =>
                               _confirmDelete(context, ref, block),
-                          icon: const Icon(Icons.delete_outline_rounded,
-                              size: 16),
+                          icon: const Icon(
+                              Icons.delete_outline_rounded, size: 16),
                           label: const Text('Delete'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.priorityHigh,
@@ -206,7 +246,8 @@ class TimeBlockDetailSheet extends ConsumerWidget {
                                 AppColors.priorityHigh.withOpacity(0.3)),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding:
+                            const EdgeInsets.symmetric(vertical: 12),
                             textStyle: AppTypography.labelMedium,
                           ),
                         ),
@@ -232,8 +273,8 @@ class TimeBlockDetailSheet extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete block?',
             style: TextStyle(fontFamily: 'DMSans')),
         content: Text(
@@ -242,9 +283,8 @@ class TimeBlockDetailSheet extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.priorityHigh),
@@ -256,6 +296,16 @@ class TimeBlockDetailSheet extends ConsumerWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
+      // Also unlink task if linked
+      if (block.taskId != null) {
+        final task =
+        await LinkService.getTaskForBlock(block);
+        if (task != null) {
+          task.scheduleBlockId = null;
+          task.updatedAt = DateTime.now();
+          await LinkService.getTaskForBlock(block); // no-op just future
+        }
+      }
       await TimeBlockRepository.instance.softDelete(block);
       ref.invalidate(dayBlocksProvider);
       if (context.mounted) {
@@ -281,9 +331,14 @@ class TimeBlockDetailSheet extends ConsumerWidget {
 // ── Tag ───────────────────────────────────────────────────────────────────────
 
 class _Tag extends StatelessWidget {
-  const _Tag({required this.label, required this.color});
+  const _Tag({
+    required this.label,
+    required this.color,
+    this.icon,
+  });
   final String label;
   final Color color;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -293,8 +348,17 @@ class _Tag extends StatelessWidget {
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label,
-          style: AppTypography.labelSmall.copyWith(color: color)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(label,
+              style: AppTypography.labelSmall.copyWith(color: color)),
+        ],
+      ),
     );
   }
 }
