@@ -13,18 +13,15 @@ import '../../shared/widgets/app_fab.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'add_task_sheet.dart';
 import 'task_card.dart';
+import 'kanban_board.dart';
 import '../../core/providers/tasks_provider.dart';
-import '../schedule/add_time_block_sheet.dart'; // ← ADD
-
-// ── Category cache provider ───────────────────────────────────────────────────
+import '../schedule/add_time_block_sheet.dart';
 
 final _categoriesProvider = FutureProvider.autoDispose<List<Category>>((ref) async {
   final cats = await DatabaseService.instance.isar.categorys.where().findAll();
   cats.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   return cats;
 });
-
-// ── TasksScreen ───────────────────────────────────────────────────────────────
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -45,7 +42,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  void _openAddTimeBlock() { // ← ADD
+  void _openAddTimeBlock() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -67,7 +64,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ── Header ──────────────────────────────────────────────────
+            // ── Header ────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -77,22 +74,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Tasks',
-                            style: AppTypography.displayMedium.copyWith(
-                              color: textPrimary,
-                            ),
-                          ),
-                          Text(
-                            'タスク一覧',
-                            style: AppTypography.jpLight.copyWith(
-                              color: textSecondary,
-                            ),
-                          ),
+                          Text('Tasks',
+                              style: AppTypography.displayMedium
+                                  .copyWith(color: textPrimary)),
+                          Text('タスク一覧',
+                              style: AppTypography.jpLight
+                                  .copyWith(color: textSecondary)),
                         ],
                       ),
                     ),
-                    // ── View toggle (list/kanban) ──────────────────────
                     _ViewToggleButton(
                       isKanban: _isKanban,
                       onToggle: () {
@@ -101,7 +91,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       },
                     ),
                     const SizedBox(width: 8),
-                    // ── Sort menu ──────────────────────────────────────
                     _SortMenuButton(
                       currentMode: filter.sortMode,
                       onSelect: (mode) {
@@ -115,7 +104,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               ),
             ),
 
-            // ── Filter chips ─────────────────────────────────────────────
+            // ── Filter chips ──────────────────────────────────────────
             SliverToBoxAdapter(
               child: cats.when(
                 data: (categories) => _FilterChipRow(
@@ -135,16 +124,34 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               ),
             ),
 
-            // ── List body ─────────────────────────────────────────────────
+            // ── Body — List OR Kanban ─────────────────────────────────
             sections.when(
               data: (s) {
-                if (s.inProgress.isEmpty &&
-                    s.pending.isEmpty &&
-                    s.completed.isEmpty) {
+                final allTasks = [
+                  ...s.inProgress,
+                  ...s.pending,
+                  ...s.completed,
+                ];
+
+                if (allTasks.isEmpty) {
                   return const SliverFillRemaining(
                     child: _TasksEmptyState(),
                   );
                 }
+
+                // ── KANBAN VIEW ───────────────────────────────────────
+                if (_isKanban) {
+                  return SliverFillRemaining(
+                    child: KanbanBoard(
+                      tasks: allTasks,
+                      categories: cats.valueOrNull ?? [],
+                      onTaskTap: (task) =>
+                          context.push('/tasks/${task.id}'),
+                    ),
+                  );
+                }
+
+                // ── LIST VIEW ─────────────────────────────────────────
                 return _TaskListSliver(
                   sections: s,
                   categories: cats.valueOrNull ?? [],
@@ -162,14 +169,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               ),
             ),
 
-            // Bottom padding for FAB
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
       floatingActionButton: AppFab(
         onAddTask: _openAddTask,
-        onAddTimeBlock: _openAddTimeBlock, // ← CHANGED
+        onAddTimeBlock: _openAddTimeBlock,
       ),
     );
   }
@@ -182,11 +188,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   void _handleDelete(Task task) {
     HapticFeedback.heavyImpact();
     TaskRepository.instance.softDeleteTask(task);
-    AppToast.show(
-      context,
-      'Task deleted',
-      onUndo: () => TaskRepository.instance.restoreTask(task),
-    );
+    AppToast.show(context, 'Task deleted',
+        onUndo: () => TaskRepository.instance.restoreTask(task));
   }
 
   void _handleDuplicate(Task task) {
@@ -341,8 +344,7 @@ class _SwipeableTaskCard extends ConsumerWidget {
           children: [
             const SizedBox(height: 8),
             Container(
-              width: 36,
-              height: 4,
+              width: 36, height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2),
@@ -388,13 +390,11 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(0, 16, 0, 6),
       child: Row(
         children: [
-          Text(
-            label.toUpperCase(),
-            style: AppTypography.labelSmall.copyWith(
-              color: textSecondary,
-              letterSpacing: 0.8,
-            ),
-          ),
+          Text(label.toUpperCase(),
+              style: AppTypography.labelSmall.copyWith(
+                color: textSecondary,
+                letterSpacing: 0.8,
+              )),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -402,10 +402,8 @@ class _SectionHeader extends StatelessWidget {
               color: textSecondary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(
-              '$count',
-              style: AppTypography.labelSmall.copyWith(color: textSecondary),
-            ),
+            child: Text('$count',
+                style: AppTypography.labelSmall.copyWith(color: textSecondary)),
           ),
         ],
       ),
@@ -428,21 +426,15 @@ class _FilterChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final accent = scheme.primary;
-
+    final accent = Theme.of(context).colorScheme.primary;
     return SizedBox(
       height: 48,
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         scrollDirection: Axis.horizontal,
         children: [
-          _Chip(
-            label: 'All',
-            isSelected: selectedCategoryId == null,
-            color: accent,
-            onTap: () => onSelect(null),
-          ),
+          _Chip(label: 'All', isSelected: selectedCategoryId == null,
+              color: accent, onTap: () => onSelect(null)),
           ...categories.map((cat) {
             final color = AppColors.accentFromHex(cat.colorHex);
             return _Chip(
@@ -465,7 +457,6 @@ class _Chip extends StatelessWidget {
     required this.color,
     required this.onTap,
   });
-
   final String label;
   final bool isSelected;
   final Color color;
@@ -487,12 +478,10 @@ class _Chip extends StatelessWidget {
           ),
         ),
         child: Center(
-          child: Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
-              color: isSelected ? Colors.white : color,
-            ),
-          ),
+          child: Text(label,
+              style: AppTypography.labelMedium.copyWith(
+                color: isSelected ? Colors.white : color,
+              )),
         ),
       ),
     );
@@ -511,8 +500,7 @@ class _ViewToggleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 36, height: 36,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -540,11 +528,8 @@ class _SortMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<TaskSortMode>(
-      icon: Icon(
-        Icons.sort_rounded,
-        size: 20,
-        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-      ),
+      icon: Icon(Icons.sort_rounded, size: 20,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       itemBuilder: (_) => [
         _item(TaskSortMode.createdAt, 'Date created', Icons.add_circle_outline),
@@ -583,7 +568,6 @@ class _TasksEmptyState extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final textSecondary =
     Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(48),
@@ -591,37 +575,26 @@ class _TasksEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 80, height: 80,
               decoration: BoxDecoration(
                 color: accent.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.check_circle_outline_rounded,
-                size: 40,
-                color: accent.withOpacity(0.5),
-              ),
+              child: Icon(Icons.check_circle_outline_rounded,
+                  size: 40, color: accent.withOpacity(0.5)),
             ),
             const SizedBox(height: 20),
-            Text(
-              'No tasks yet',
-              style: AppTypography.headingMedium.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
+            Text('No tasks yet',
+                style: AppTypography.headingMedium.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 8),
-            Text(
-              'Tap + to add your first task',
-              style: AppTypography.bodyMedium.copyWith(color: textSecondary),
-              textAlign: TextAlign.center,
-            ),
+            Text('Tap + to add your first task',
+                style: AppTypography.bodyMedium.copyWith(color: textSecondary),
+                textAlign: TextAlign.center),
             const SizedBox(height: 4),
-            Text(
-              'タスクを追加してください',
-              style: AppTypography.jpLight.copyWith(color: textSecondary),
-              textAlign: TextAlign.center,
-            ),
+            Text('タスクを追加してください',
+                style: AppTypography.jpLight.copyWith(color: textSecondary),
+                textAlign: TextAlign.center),
           ],
         ),
       ),
